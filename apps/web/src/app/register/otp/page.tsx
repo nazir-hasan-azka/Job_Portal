@@ -1,106 +1,112 @@
 'use client'
 
-import { useState, useRef, useEffect, KeyboardEvent, ClipboardEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { Volume2, ChevronRight, ChevronLeft, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { jobSeekerAPI } from '@/lib/api'
 
-export default function RegisterOtpPage() {
+export default function RegisterOTPPage() {
   const router = useRouter()
-  const [otp, setOtp] = useState<string[]>(new Array(6).fill(''))
-  const [timer, setTimer] = useState(30)
+  const [otp, setOtp] = useState(['', '', '', ''])
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [resendLoading, setResendLoading] = useState(false)
   const [canResend, setCanResend] = useState(false)
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([])
+  const [countdown, setCountdown] = useState(30)
 
-  // Timer countdown
   useEffect(() => {
-    if (timer > 0) {
-      const countdown = setInterval(() => {
-        setTimer((prev) => {
-          if (prev <= 1) {
-            setCanResend(true)
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-      return () => clearInterval(countdown)
+    const phone = localStorage.getItem('phoneNumber')
+    if (!phone) {
+      router.push('/register/phone')
+      return
     }
-  }, [timer])
+    setPhoneNumber(phone)
+  }, [router])
 
-  const handleChange = (index: number, value: string) => {
-    // Only allow numbers
-    if (value && !/^\d+$/.test(value)) return
-
-    const newOtp = [...otp]
-    // Handle single character input
-    newOtp[index] = value.slice(-1)
-    setOtp(newOtp)
-
-    // Auto-focus next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
-    // Handle backspace
-    if (e.key === 'Backspace') {
-      if (!otp[index] && index > 0) {
-        inputRefs.current[index - 1]?.focus()
-      }
-    }
-    // Handle arrow keys
-    else if (e.key === 'ArrowLeft' && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    } else if (e.key === 'ArrowRight' && index < 5) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault()
-    const pastedData = e.clipboardData.getData('text/plain').slice(0, 6)
-    
-    if (!/^\d+$/.test(pastedData)) return
-
-    const newOtp = [...otp]
-    pastedData.split('').forEach((char, index) => {
-      if (index < 6) {
-        newOtp[index] = char
-      }
-    })
-    setOtp(newOtp)
-
-    // Focus the next empty input or the last one
-    const nextEmptyIndex = newOtp.findIndex(val => !val)
-    if (nextEmptyIndex !== -1) {
-      inputRefs.current[nextEmptyIndex]?.focus()
+  useEffect(() => {
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
+      return () => clearTimeout(timer)
     } else {
-      inputRefs.current[5]?.focus()
+      setCanResend(true)
+    }
+  }, [countdown])
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (value.length > 1) return
+    
+    const newOtp = [...otp]
+    newOtp[index] = value
+    setOtp(newOtp)
+    
+    if (value && index < 3) {
+      const nextInput = document.getElementById(`otp-${index + 1}`)
+      nextInput?.focus()
+    }
+    
+    if (error) setError('')
+  }
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`)
+      prevInput?.focus()
     }
   }
 
-  const handleResend = () => {
-    if (canResend) {
-      setTimer(30)
-      setCanResend(false)
-      setOtp(new Array(6).fill(''))
-      inputRefs.current[0]?.focus()
-      console.log('Resending OTP...')
+  const handleVerify = async () => {
+    const otpCode = otp.join('')
+    
+    if (otpCode.length !== 4) {
+      setError('Please enter the complete OTP')
+      return
     }
-  }
 
-  const handleNext = () => {
-    const otpValue = otp.join('')
-    if (otpValue.length === 6) {
-      // Save OTP for verification
-      localStorage.setItem('otp', otpValue)
-      console.log('OTP:', otpValue)
+    try {
+      setLoading(true)
+      setError('')
       
-      // Navigate to profile creation
+      // Call API to verify OTP
+      await jobSeekerAPI.verifyOTP({
+        phoneNumber,
+        otp: otpCode
+      })
+      
+      console.log('✅ OTP verified successfully')
+      
+      // Navigate to profile completion
       router.push('/register/profile')
+    } catch (err) {
+      console.error('❌ Verification error:', err)
+      setError(err instanceof Error ? err.message : 'Invalid OTP. Please try again.')
+      setOtp(['', '', '', ''])
+      document.getElementById('otp-0')?.focus()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (!canResend || resendLoading) return
+
+    try {
+      setResendLoading(true)
+      setError('')
+      
+      // Call API to resend OTP
+      await jobSeekerAPI.registerPhone({ phoneNumber })
+      
+      console.log('✅ OTP resent successfully')
+      setCanResend(false)
+      setCountdown(30)
+    } catch (err) {
+      console.error('❌ Resend error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP')
+    } finally {
+      setResendLoading(false)
     }
   }
 
@@ -108,23 +114,17 @@ export default function RegisterOtpPage() {
     router.push('/register/phone')
   }
 
-  const isOtpComplete = otp.every(digit => digit !== '')
-
   return (
     <div className="relative min-h-screen bg-white">
       {/* Desktop Layout */}
       <div className="hidden lg:flex min-h-screen">
-        {/* Left Side - Blue Section (Fixed Width) */}
         <div className="w-[527px] bg-primary-50 relative flex-shrink-0">
           <div className="relative h-full flex flex-col">
-            {/* Text Content */}
             <div className="px-12 pt-20">
               <h2 className="text-[40px] font-bold text-white leading-[1.2] max-w-[448px]">
-                Your Next Opportunity Is Just a Click Away
+                Verify Your Identity
               </h2>
             </div>
-
-            {/* Illustration at Bottom */}
             <div className="absolute bottom-0 left-0 w-full">
               <div className="relative w-[522px] h-[348px]">
                 <Image
@@ -139,260 +139,191 @@ export default function RegisterOtpPage() {
           </div>
         </div>
 
-        {/* Right Side - Form Section */}
         <div className="flex-1 bg-white overflow-auto">
           <div className="max-w-[1400px] mx-auto px-16 py-16">
-            {/* Header */}
             <div className="flex items-start justify-between mb-24">
-              {/* Logo */}
               <div className="relative w-[236px] h-[66px]">
                 <Image
                   src="/assets/logo.png"
-                  alt="Job Portal Logo"
+                  alt="Logo"
                   fill
                   className="object-contain object-left"
                   priority
                 />
               </div>
-
-              {/* Close Button */}
-              <Link
-                href="/"
-                className="flex items-center gap-2 bg-error-500 hover:bg-error-600 text-white px-5 py-3 rounded-lg transition-colors"
-              >
+              <Link href="/" className="flex items-center gap-2 bg-error-500 text-white px-5 py-3 rounded-lg hover:bg-error-600 transition-colors">
                 <span className="text-[18px]">Close</span>
                 <X className="w-5 h-5" />
               </Link>
             </div>
 
-            {/* Main Content */}
+            <div className="flex items-center gap-3 mb-16">
+              <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <ChevronLeft className="w-6 h-6 text-gray-600" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+                <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+              </div>
+              <span className="text-[#767676] text-[16px] ml-2">Step 2 of 5</span>
+            </div>
+
             <div className="max-w-[1200px]">
-              {/* Welcome Text */}
               <div className="mb-16">
-                <h1 className="text-[56px] font-bold text-black mb-6 leading-tight">
-                  Welcome Guest
+                <h1 className="text-[56px] font-bold text-black leading-tight mb-4">
+                  Enter verification code
                 </h1>
                 <p className="text-[24px] text-[#767676]">
-                  Create a account for the job search
+                  We've sent a code to {phoneNumber}
                 </p>
               </div>
 
-              {/* OTP Input Section */}
-              <div className="mb-12">
-                {/* Label */}
-                <div className="flex items-center gap-3 mb-8">
-                  <label className="text-[20px] font-medium text-black">
-                    Enter the phone number
-                  </label>
+              {error && (
+                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg max-w-[953px]">
+                  <p className="text-red-600">{error}</p>
                 </div>
+              )}
 
-                {/* OTP Input Boxes */}
-                <div className="flex items-center gap-[30px] mb-6">
+              <div className="mb-12">
+                <div className="flex items-center gap-3 mb-6">
+                  <label className="text-[20px] font-medium text-black">
+                    Verification code *
+                  </label>
+                  <button className="flex items-center gap-2 text-primary-50 hover:text-primary-60">
+                    <Volume2 className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="flex items-center gap-4 mb-6">
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      ref={(el) => (inputRefs.current[index] = el)}
+                      id={`otp-${index}`}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
                       value={digit}
-                      onChange={(e) => handleChange(index, e.target.value)}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(index, e)}
-                      onPaste={handlePaste}
-                      className="w-[109px] h-[80px] text-center text-[32px] font-semibold border border-[#b5b5b5] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent transition-all"
+                      disabled={loading}
+                      className="w-[69px] h-[69px] text-center border border-[#b5b5b5] rounded-[10px] text-[24px] font-bold text-black focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent disabled:opacity-50"
                     />
                   ))}
-                  
-                  {/* Audio Icon */}
-                  <button
-                    className="p-2 hover:bg-gray-100 rounded transition-colors"
-                    aria-label="Play audio"
-                  >
-                    <Volume2 className="w-[34px] h-[34px] text-gray-600" />
-                  </button>
                 </div>
 
-                {/* Resend OTP */}
                 <button
                   onClick={handleResend}
-                  disabled={!canResend}
-                  className={`text-[20px] font-medium transition-colors ${
-                    canResend
-                      ? 'text-primary-70 hover:text-primary-80 cursor-pointer'
-                      : 'text-[#818181] cursor-not-allowed'
-                  }`}
+                  disabled={!canResend || resendLoading}
+                  className="text-primary-50 hover:text-primary-60 text-[16px] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Resend the OTP? {timer > 0 ? `${timer}s` : ''}
+                  {resendLoading ? 'Sending...' : canResend ? 'Resend Code' : `Resend in ${countdown}s`}
                 </button>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between max-w-[1075px] mb-16 mt-20">
-                {/* Back Button */}
+              <div className="flex justify-end max-w-[953px]">
                 <button
-                  onClick={handleBack}
-                  className="flex items-center gap-2 border border-secondary-70 hover:bg-secondary-10 text-black px-5 py-3 rounded-lg transition-colors h-[50px]"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px]">Back</span>
-                </button>
-
-                {/* Next Button */}
-                <button
-                  onClick={handleNext}
-                  disabled={!isOtpComplete}
+                  onClick={handleVerify}
+                  disabled={otp.join('').length !== 4 || loading}
                   className="flex items-center gap-2 bg-primary-50 hover:bg-primary-60 text-white px-12 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-[20px]">Next</span>
+                  <span className="text-[20px]">{loading ? 'Verifying...' : 'Verify'}</span>
                   <ChevronRight className="w-6 h-6" />
                 </button>
-              </div>
-
-              {/* Sign In Link */}
-              <div className="text-center max-w-[1075px]">
-                <p className="text-[20px]">
-                  <span className="text-black">Already have an account? </span>
-                  <Link
-                    href="/login"
-                    className="text-primary-70 font-semibold hover:text-primary-80 transition-colors"
-                  >
-                    Sign in here
-                  </Link>
-                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile & Tablet Layout */}
+      {/* Mobile Layout */}
       <div className="lg:hidden min-h-screen flex flex-col">
-        {/* Header */}
         <div className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-200">
-          {/* Logo */}
+          <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ChevronLeft className="w-6 h-6 text-gray-600" />
+          </button>
           <div className="relative w-[140px] h-[40px]">
-            <Image
-              src="/assets/logo.png"
-              alt="Job Portal Logo"
-              fill
-              className="object-contain object-left"
-              priority
-            />
+            <Image src="/assets/logo.png" alt="Logo" fill className="object-contain" priority />
           </div>
-
-          {/* Close Button */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 bg-error-500 hover:bg-error-600 text-white px-3 py-2 rounded-lg transition-colors"
-          >
-            <span className="text-sm">Close</span>
+          <Link href="/" className="flex items-center gap-1 bg-error-500 text-white px-3 py-2 rounded-lg text-sm">
+            <span>Close</span>
             <X className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 bg-white px-4 py-8 overflow-auto">
-          {/* Welcome Text */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-black mb-3">
-              Welcome Guest
-            </h1>
-            <p className="text-lg text-[#767676]">
-              Create a account for the job search
-            </p>
+        <div className="bg-white px-4 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+            <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
           </div>
+          <span className="text-sm text-gray-600">Step 2 of 5</span>
+        </div>
 
-          {/* OTP Input Section */}
-          <div className="mb-12">
-            {/* Label */}
-            <div className="flex items-center gap-2 mb-6">
-              <label className="text-lg font-medium text-black">
-                Enter the phone number
-              </label>
+        <div className="flex-1 bg-white px-4 py-8 overflow-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold text-black mb-4">
+            Enter verification code
+          </h1>
+          <p className="text-base text-gray-600 mb-8">
+            We've sent a code to {phoneNumber}
+          </p>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
             </div>
+          )}
 
-            {/* OTP Input Boxes - 3 per row on mobile */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="mb-8">
+            <label className="text-base font-medium text-black mb-4 block">
+              Verification code *
+            </label>
+            <div className="flex items-center gap-3 mb-4">
               {otp.map((digit, index) => (
                 <input
                   key={index}
-                  ref={(el) => (inputRefs.current[index] = el)}
+                  id={`otp-mobile-${index}`}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}
                   value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={handlePaste}
-                  className="aspect-square text-center text-2xl font-semibold border border-[#b5b5b5] rounded-[10px] focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent transition-all"
+                  disabled={loading}
+                  className="flex-1 h-14 text-center border border-gray-300 rounded-lg text-xl font-bold focus:outline-none focus:ring-2 focus:ring-primary-50 disabled:opacity-50"
                 />
               ))}
             </div>
-
-            {/* Audio Icon & Resend */}
-            <div className="flex items-center justify-between">
-              <button
-                onClick={handleResend}
-                disabled={!canResend}
-                className={`text-base font-medium transition-colors ${
-                  canResend
-                    ? 'text-primary-70 hover:text-primary-80 cursor-pointer'
-                    : 'text-[#818181] cursor-not-allowed'
-                }`}
-              >
-                Resend OTP? {timer > 0 ? `${timer}s` : ''}
-              </button>
-
-              <button
-                className="p-2 hover:bg-gray-100 rounded transition-colors"
-                aria-label="Play audio"
-              >
-                <Volume2 className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3 mb-8">
-            {/* Next Button */}
             <button
-              onClick={handleNext}
-              disabled={!isOtpComplete}
-              className="w-full flex items-center justify-center gap-2 bg-primary-50 hover:bg-primary-60 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleResend}
+              disabled={!canResend || resendLoading}
+              className="text-primary-50 text-sm disabled:opacity-50"
             >
-              <span className="text-lg">Next</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
-
-            {/* Back Button */}
-            <button
-              onClick={handleBack}
-              className="w-full flex items-center justify-center gap-2 border border-secondary-70 hover:bg-secondary-10 text-black px-6 py-3 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-lg">Back</span>
+              {resendLoading ? 'Sending...' : canResend ? 'Resend Code' : `Resend in ${countdown}s`}
             </button>
           </div>
 
-          {/* Sign In Link */}
-          <div className="text-center">
-            <p className="text-base">
-              <span className="text-black">Already have an account? </span>
-              <Link
-                href="/login"
-                className="text-primary-70 font-semibold hover:text-primary-80 transition-colors"
-              >
-                Sign in here
-              </Link>
-            </p>
-          </div>
+          <button
+            onClick={handleVerify}
+            disabled={otp.join('').length !== 4 || loading}
+            className="w-full flex items-center justify-center gap-2 bg-primary-50 text-white px-6 py-3 rounded-lg disabled:opacity-50"
+          >
+            <span className="text-lg">{loading ? 'Verifying...' : 'Verify'}</span>
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Blue Decorative Section at Bottom */}
         <div className="bg-primary-50 py-8 px-4">
-          <h2 className="text-2xl font-bold text-white text-center leading-tight">
-            Your Next Opportunity Is Just a Click Away
+          <h2 className="text-2xl font-bold text-white leading-tight mb-4">
+            Verify Your Identity
           </h2>
+          <div className="relative w-full h-48">
+            <Image src="/assets/421.svg" alt="Illustration" fill className="object-contain" />
+          </div>
         </div>
       </div>
     </div>

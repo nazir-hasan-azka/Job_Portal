@@ -5,24 +5,43 @@ import { Volume2, ChevronRight, ChevronLeft, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { jobSeekerAPI } from '@/lib/api'
 
 export default function RegisterPhonePage() {
   const router = useRouter()
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleNext = () => {
-    if (phoneNumber.trim()) {
-      // Save phone number to localStorage or state management
+  const handleNext = async () => {
+    if (!phoneNumber.trim()) {
+      setError('Please enter your phone number')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+      
+      // Call API to register phone number
+      await jobSeekerAPI.registerPhone({ phoneNumber })
+      
+      // Save phone number for OTP verification
       localStorage.setItem('phoneNumber', phoneNumber)
-      console.log('Phone number:', phoneNumber)
+      console.log('✅ Phone registered:', phoneNumber)
       
       // Navigate to OTP verification
       router.push('/register/otp')
+    } catch (err) {
+      console.error('❌ Registration error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to register. Please try again.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleBack = () => {
-    router.push('/register')
+    router.push('/')
   }
 
   return (
@@ -54,221 +73,191 @@ export default function RegisterPhonePage() {
           </div>
         </div>
 
-        {/* Right Side - Form Section */}
+        {/* Right Side - Form (Flexible Width) */}
         <div className="flex-1 bg-white overflow-auto">
           <div className="max-w-[1400px] mx-auto px-16 py-16">
-            {/* Header */}
+            {/* Header with Logo and Close */}
             <div className="flex items-start justify-between mb-24">
-              {/* Logo */}
               <div className="relative w-[236px] h-[66px]">
                 <Image
                   src="/assets/logo.png"
-                  alt="Job Portal Logo"
+                  alt="Logo"
                   fill
                   className="object-contain object-left"
                   priority
                 />
               </div>
-
-              {/* Close Button */}
-              <Link
-                href="/"
-                className="flex items-center gap-2 bg-error-500 hover:bg-error-600 text-white px-5 py-3 rounded-lg transition-colors"
-              >
+              <Link href="/" className="flex items-center gap-2 bg-error-500 text-white px-5 py-3 rounded-lg hover:bg-error-600 transition-colors">
                 <span className="text-[18px]">Close</span>
                 <X className="w-5 h-5" />
               </Link>
             </div>
 
+            {/* Progress Indicator */}
+            <div className="flex items-center gap-3 mb-16">
+              <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <ChevronLeft className="w-6 h-6 text-gray-600" />
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+                <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+              </div>
+              <span className="text-[#767676] text-[16px] ml-2">Step 1 of 5</span>
+            </div>
+
             {/* Main Content */}
             <div className="max-w-[1200px]">
-              {/* Welcome Text */}
               <div className="mb-16">
-                <h1 className="text-[56px] font-bold text-black mb-6 leading-tight">
-                  Welcome Guest
+                <h1 className="text-[56px] font-bold text-black leading-tight mb-4">
+                  Enter your phone number
                 </h1>
                 <p className="text-[24px] text-[#767676]">
-                  Create a account for the job search
+                  We'll send you a verification code
                 </p>
               </div>
+
+              {error && (
+                <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-lg max-w-[953px]">
+                  <p className="text-red-600">{error}</p>
+                </div>
+              )}
 
               {/* Phone Number Input */}
-              <div className="mb-20">
-                {/* Label */}
-                <div className="flex items-center gap-3 mb-8">
+              <div className="mb-12">
+                <div className="flex items-center gap-3 mb-6">
                   <label htmlFor="phone" className="text-[20px] font-medium text-black">
-                    Enter the phone number *
+                    Phone number *
                   </label>
-                </div>
-
-                {/* Input Field */}
-                <div className="relative max-w-[1075px]">
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="w-full h-[69px] px-3 border border-[#b5b5b5] rounded-[10px] text-[20px] text-black placeholder:text-[#aaaaaa] focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent transition-all"
-                  />
-                  
-                  {/* Audio Icon */}
-                  <button
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded transition-colors"
-                    aria-label="Play audio"
-                  >
-                    <Volume2 className="w-[34px] h-[34px] text-gray-600" />
+                  <button className="flex items-center gap-2 text-primary-50 hover:text-primary-60">
+                    <Volume2 className="w-5 h-5" />
                   </button>
                 </div>
+                <input
+                  id="phone"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    setPhoneNumber(e.target.value)
+                    if (error) setError('')
+                  }}
+                  placeholder="Enter your phone number"
+                  disabled={loading}
+                  className="w-full max-w-[953px] h-[69px] px-3 border border-[#b5b5b5] rounded-[10px] text-[20px] text-black placeholder:text-[#aaaaaa] focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent transition-all disabled:opacity-50"
+                />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between max-w-[1075px] mb-16">
-                {/* Back Button */}
-                <button
-                  onClick={handleBack}
-                  className="flex items-center gap-2 border border-secondary-70 hover:bg-secondary-10 text-black px-5 py-3 rounded-lg transition-colors h-[50px]"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                  <span className="text-[18px]">Back</span>
-                </button>
-
-                {/* Next Button */}
+              {/* Next Button */}
+              <div className="flex justify-end max-w-[953px]">
                 <button
                   onClick={handleNext}
-                  disabled={!phoneNumber.trim()}
+                  disabled={!phoneNumber.trim() || loading}
                   className="flex items-center gap-2 bg-primary-50 hover:bg-primary-60 text-white px-12 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span className="text-[20px]">Next</span>
+                  <span className="text-[20px]">{loading ? 'Sending...' : 'Next'}</span>
                   <ChevronRight className="w-6 h-6" />
                 </button>
-              </div>
-
-              {/* Sign In Link */}
-              <div className="text-center max-w-[1075px]">
-                <p className="text-[20px]">
-                  <span className="text-black">Already have an account? </span>
-                  <Link
-                    href="/login"
-                    className="text-primary-70 font-semibold hover:text-primary-80 transition-colors"
-                  >
-                    Sign in here
-                  </Link>
-                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile & Tablet Layout */}
+      {/* Mobile Layout */}
       <div className="lg:hidden min-h-screen flex flex-col">
         {/* Header */}
         <div className="bg-white px-4 py-4 flex items-center justify-between border-b border-gray-200">
-          {/* Logo */}
+          <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ChevronLeft className="w-6 h-6 text-gray-600" />
+          </button>
           <div className="relative w-[140px] h-[40px]">
             <Image
               src="/assets/logo.png"
-              alt="Job Portal Logo"
+              alt="Logo"
               fill
-              className="object-contain object-left"
+              className="object-contain"
               priority
             />
           </div>
-
-          {/* Close Button */}
-          <Link
-            href="/"
-            className="flex items-center gap-2 bg-error-500 hover:bg-error-600 text-white px-3 py-2 rounded-lg transition-colors"
-          >
-            <span className="text-sm">Close</span>
+          <Link href="/" className="flex items-center gap-1 bg-error-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-error-600">
+            <span>Close</span>
             <X className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 bg-white px-4 py-8 overflow-auto">
-          {/* Welcome Text */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-black mb-3">
-              Welcome Guest
-            </h1>
-            <p className="text-lg text-[#767676]">
-              Create a account for the job search
-            </p>
+        {/* Progress */}
+        <div className="bg-white px-4 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-[30px] h-[8px] bg-primary-50 rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
+            <div className="w-[30px] h-[8px] bg-[#E0E0E0] rounded"></div>
           </div>
-
-          {/* Phone Number Input */}
-          <div className="mb-12">
-            {/* Label */}
-            <div className="flex items-center gap-2 mb-6">
-              <label htmlFor="phone-mobile" className="text-lg font-medium text-black">
-                Enter the phone number *
-              </label>
-            </div>
-
-            {/* Input Field */}
-            <div className="relative">
-              <input
-                id="phone-mobile"
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="Enter phone number"
-                className="w-full h-[60px] px-3 pr-14 border border-[#b5b5b5] rounded-[10px] text-lg text-black placeholder:text-[#aaaaaa] focus:outline-none focus:ring-2 focus:ring-primary-50 focus:border-transparent transition-all"
-              />
-              
-              {/* Audio Icon */}
-              <button
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded transition-colors"
-                aria-label="Play audio"
-              >
-                <Volume2 className="w-6 h-6 text-gray-600" />
-              </button>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="space-y-3 mb-8">
-            {/* Next Button */}
-            <button
-              onClick={handleNext}
-              disabled={!phoneNumber.trim()}
-              className="w-full flex items-center justify-center gap-2 bg-primary-50 hover:bg-primary-60 text-white px-6 py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="text-lg">Next</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
-
-            {/* Back Button */}
-            <button
-              onClick={handleBack}
-              className="w-full flex items-center justify-center gap-2 border border-secondary-70 hover:bg-secondary-10 text-black px-6 py-3 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-              <span className="text-lg">Back</span>
-            </button>
-          </div>
-
-          {/* Sign In Link */}
-          <div className="text-center">
-            <p className="text-base">
-              <span className="text-black">Already have an account? </span>
-              <Link
-                href="/login"
-                className="text-primary-70 font-semibold hover:text-primary-80 transition-colors"
-              >
-                Sign in here
-              </Link>
-            </p>
-          </div>
+          <span className="text-sm text-gray-600">Step 1 of 5</span>
         </div>
 
-        {/* Blue Decorative Section at Bottom */}
+        {/* Content */}
+        <div className="flex-1 bg-white px-4 py-8 overflow-auto">
+          <h1 className="text-3xl sm:text-4xl font-bold text-black mb-4">
+            Enter your phone number
+          </h1>
+          <p className="text-base text-gray-600 mb-8">
+            We'll send you a verification code
+          </p>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+
+          <div className="mb-8">
+            <label htmlFor="phone-mobile" className="text-base font-medium text-black mb-4 block flex items-center gap-2">
+              Phone number *
+              <button className="text-primary-50">
+                <Volume2 className="w-4 h-4" />
+              </button>
+            </label>
+            <input
+              id="phone-mobile"
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => {
+                setPhoneNumber(e.target.value)
+                if (error) setError('')
+              }}
+              placeholder="Enter your phone number"
+              disabled={loading}
+              className="w-full h-14 px-3 border border-gray-300 rounded-lg text-base placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-50 disabled:opacity-50"
+            />
+          </div>
+
+          <button
+            onClick={handleNext}
+            disabled={!phoneNumber.trim() || loading}
+            className="w-full flex items-center justify-center gap-2 bg-primary-50 text-white px-6 py-3 rounded-lg hover:bg-primary-60 transition-colors disabled:opacity-50"
+          >
+            <span className="text-lg">{loading ? 'Sending...' : 'Next'}</span>
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Blue Section */}
         <div className="bg-primary-50 py-8 px-4">
-          <h2 className="text-2xl font-bold text-white text-center leading-tight">
+          <h2 className="text-2xl font-bold text-white leading-tight mb-4">
             Your Next Opportunity Is Just a Click Away
           </h2>
+          <div className="relative w-full h-48">
+            <Image
+              src="/assets/421.svg"
+              alt="Illustration"
+              fill
+              className="object-contain"
+            />
+          </div>
         </div>
       </div>
     </div>
