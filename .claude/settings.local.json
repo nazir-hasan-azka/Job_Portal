@@ -2,7 +2,24 @@
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(git -C /Users/nazirhasan/Documents/GitHub/Job_Portal/ log --oneline -20)",
+      "Bash(ls -la /Users/nazirhasan/Documents/GitHub/job-portal-backend-azka/src/ 2>&1)",
+      "Read(//Users/nazirhasan/Documents/GitHub/job-portal-backend-azka/src/**)",
+      "Bash(cd /Users/nazirhasan/Documents/GitHub/job-portal-backend-azka && grep -rn -E \"\\(Q[0-9]+|NC-?[0-9]+|T[0-9]+ #[0-9]+|T2a #[0-9]+[a-z]?\\)\" src/ | grep -E \"\\(controllers|services|validators|routes|middleware|utils|config\\)\" | head -200)",
+      "Read(//Users/nazirhasan/Documents/GitHub/job-portal-backend-azka/**)",
+      "Bash(git -C /Users/nazirhasan/Documents/GitHub/Job_Portal/ status --short)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(python3 docs/_context/tools/md_to_pdf.py:*)",
+      "Bash(wc:*)",
+      "Bash(find ./*)",
+      "Bash(grep:*)",
+      "Bash(pdfinfo:*)",
+      "Read(/Users/nazirhasan/Documents/GitHub/Job_Portal/**)"
     ],
     "deny": [],
     "ask": []

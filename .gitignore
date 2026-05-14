@@ -416,3 +416,10 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# macOS junk
+.DS_Store
+**/.DS_Store
+
+# Project archive artefacts (kept locally, not in git)
+Archive.zip
