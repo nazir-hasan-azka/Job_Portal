@@ -72,6 +72,13 @@ Status legend: ✅ final · 🔄 drafted, awaiting external sign-off · ⏳ not 
 
 ## Session log
 
+### 2026-05-14 (Sprint 1 day 4 — readability pass + Jira setup + laptop handover prep)
+
+- **PRD + RTM readability pass.** [`04-prd-v1.md`](../managerial/04-prd-v1.md) got a full tag glossary (D/Q/R/NC/T tags + status markers + audit refs), a plain-English intro on all 15 modules, and user-journey walkthroughs on M1/M4/M5/M8/M10. [`05-rtm-v1.md`](../managerial/05-rtm-v1.md) got a glossary pointer + plain-English summary line per module. No acceptance criteria changed — narrative added around the existing contract.
+- **Task tracker = Jira (free tier).** Created [`docs/technical/jira-import.csv`](../technical/jira-import.csv) (15 module epics + 22 S1 stories, 6 pre-marked Done per Asrar's BE sync) + [`jira-import-README.md`](../technical/jira-import-README.md) with import steps. Once imported, Jira is canonical for task status; `06-sprint-plan.md` becomes the planning snapshot.
+- **Pre-execution setup gaps captured.** New "Pre-execution operational setup (SETUP-GAPS)" section added below — 6 gaps, 2 resolved (Jira, Teams), 2 open (CI provider, PR conventions), 2 deferred (BE `.claude/`, secrets).
+- **Laptop handover.** Nazir moving to a new laptop. Git repo committed + pushed. Project memory bundled to `~/job-portal-memory.zip` + `.tar.gz` for manual transfer (memory is not git-tracked and not account-synced).
+
 ### 2026-05-05 (Stage 0 + 0.5 — first day of planning)
 
 - Discovered FE codebase (`apps/web` — ~30 pages, mock data, no real auth) + BE codebase (`job-portal-backend-azka` — ~70% built, 16+ commits) + UX PDF (64 pages) + business flows (`documents/Job_Portal.md`, flowcharts) + technical architecture docx
@@ -287,6 +294,23 @@ After the morning's scope revision and Charter rewrite, did a full housekeeping 
 - [ ] **MSG91 Email** procurement (folded into MSG91 master account alongside SMS + WhatsApp) — locked 2026-05-13; Nazir to procure during S1
 - [ ] **OpenAI API key** — confirm with Asrar (he may already have one for moderation)
 - [ ] **Translation reviewers** — recruit native speakers for the 9 non-English languages; coordinate by Nazir
+
+---
+
+## Pre-execution operational setup (resume keyword: SETUP-GAPS)
+
+Six operational scaffolding gaps surfaced 2026-05-13 — things needed before/around execution that the planning docs glossed over. Status as of 2026-05-14:
+
+| # | Gap | Status | Detail |
+|---|---|---|---|
+| 1 | Task tracker tool | ✅ **Jira (free tier)** | CSV ready to import at [`docs/technical/jira-import.csv`](../technical/jira-import.csv); steps in [`jira-import-README.md`](../technical/jira-import-README.md). Once imported, Jira is the canonical task tracker — `06-sprint-plan.md` becomes the planning snapshot. |
+| 2 | BE repo `.claude/` setup | ⏸ **Deferred** (Nazir's call) | D7 says each repo gets its own `.claude/` config; Asrar's BE repo has none. When resumed: draft a skeleton `.claude/CLAUDE.md` for the BE repo (Express + Prisma + Zod stack-specific). |
+| 3 | CI/CD provider | ⏳ **Open** | Recommendation: **GitHub Actions** (free for private repos, code already in GitHub). Needs Nazir + Nayan confirmation. Sprint Plan S1-19 (Nayan) assumes CI is configured. |
+| 4 | Secret management policy | ⏸ **Parked** (Nazir's call) | Recommendation: commit `.env.example` to each repo + share real `.env` values via a private channel (1Password vault or password-protected file in Teams). |
+| 5 | Team comms channel | ✅ **Microsoft Teams** | Already in place. |
+| 6 | PR / branch / commit conventions | ⏳ **Open** | Recommendation: short `CONTRIBUTING.md` at FE repo root — branch naming (`feature/`, `fix/`, `chore/`), Conventional Commits, PR template. ~30 min to write. |
+
+**To resume in a new session:** read this table, then tell the session "continue the SETUP-GAPS work" (or just reference this section). Open items are #3 (CI provider) and #6 (PR conventions); deferred items are #2 and #4 — Nazir reopens those when ready.
 
 ---
 
